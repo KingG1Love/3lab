@@ -1,0 +1,20 @@
+# Результаты заданий
+**/result_task_*.json
+**/result_task_*.md
+
+# osv-scanner intermediate files
+**/sbom_before.cdx.json
+**/sbom_after.cdx.json
+**/osv_before.json
+**/osv_after.json
+**/osv_before_text.txt
+**/osv_after_text.txt
+**/packages_before.json
+**/packages_after.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
