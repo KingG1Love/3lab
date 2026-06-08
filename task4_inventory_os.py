@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
 Task 4: Inventory openSUSE Leap 15.5 — OS info and installed packages.
-All data is read from the system, no hardcode.
-Must be run ON the openSUSE Leap 15.5 system (not the dev machine).
+Must be run ON the openSUSE Leap 15.5 system.
 
-Usage on openSUSE Leap 15.5:
+Output: result_task_4.json  (same folder as this script)
+
+Usage:
     python3 task4_inventory_os.py
-
-Output: result_task_4.json
 """
 
 import json
@@ -16,9 +15,10 @@ import subprocess
 import re
 import platform
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def read_os_release():
-    """Read /etc/os-release for OS metadata"""
     os_info = {}
     try:
         with open("/etc/os-release") as f:
@@ -28,159 +28,109 @@ def read_os_release():
                     k, v = line.split("=", 1)
                     os_info[k.strip()] = v.strip().strip('"')
     except FileNotFoundError:
-        # Fallback
-        os_info = {
-            "NAME": platform.system(),
-            "VERSION": platform.release(),
-        }
+        os_info = {"NAME": platform.system(), "VERSION": platform.release()}
     return os_info
 
 
 def get_os_info():
-    """Build OS section of the result"""
     rel = read_os_release()
     name = rel.get("NAME", "Unknown")
     version = rel.get("VERSION", "")
-    version_id = rel.get("VERSION_ID", "")
-    arch = platform.machine()
-    os_id = rel.get("ID", "")
-    pretty_name = rel.get("PRETTY_NAME", "")
+    pretty = rel.get("PRETTY_NAME", "")
     codename = rel.get("VERSION_CODENAME", rel.get("CODENAME", None))
-    description = pretty_name if pretty_name else f"{name} {version}"
-
     return {
         "name": name,
         "version": version,
-        "arch": arch,
-        "id": os_id,
-        "version_id": version_id,
-        "description": description,
-        "codename": codename if codename else None
+        "arch": platform.machine(),
+        "id": rel.get("ID", ""),
+        "version_id": rel.get("VERSION_ID", ""),
+        "description": pretty if pretty else f"{name} {version}",
+        **({"codename": codename} if codename else {}),
     }
 
 
 def parse_rpm_packages():
-    """
-    Parse installed packages using rpm.
-    Uses rpm queryformat to get structured data.
-    """
-    packages = []
-
-    # rpm query format: name|version|arch|summary|size
     fmt = "%{NAME}|%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}|%{SIZE}\\n"
     try:
         result = subprocess.run(
             ["rpm", "-qa", "--queryformat", fmt],
-            capture_output=True,
-            text=True,
-            timeout=120
+            capture_output=True, text=True, timeout=120
         )
-        lines = result.stdout.strip().split("\n")
-        for line in lines:
+        packages = []
+        for line in result.stdout.strip().split("\n"):
             if not line.strip():
                 continue
             parts = line.split("|")
-            if len(parts) < 4:
+            if len(parts) < 2:
                 continue
-            name = parts[0].strip()
+            name    = parts[0].strip()
             version = parts[1].strip()
-            arch = parts[2].strip() if len(parts) > 2 else None
+            arch    = parts[2].strip() if len(parts) > 2 else None
             summary = parts[3].strip() if len(parts) > 3 else None
-            size_str = parts[4].strip() if len(parts) > 4 else None
+            size_s  = parts[4].strip() if len(parts) > 4 else None
 
-            # Take first sentence of summary
+            description = None
             if summary:
-                first_sentence = re.split(r'[.!?\n]', summary)[0].strip()
-                description = first_sentence if first_sentence else summary
-            else:
-                description = None
+                first = re.split(r'[.!\n]', summary)[0].strip()
+                description = first or summary
 
-            size = None
-            if size_str and size_str.isdigit():
-                size = int(size_str)
-
-            pkg = {
-                "name": name,
-                "version": version,
-                "arch": arch if arch else None,
-            }
+            pkg = {"name": name, "version": version}
+            if arch:
+                pkg["arch"] = arch
             if description:
                 pkg["description"] = description
-            if size is not None:
-                pkg["size"] = size
-
+            if size_s and size_s.isdigit():
+                pkg["size"] = int(size_s)
             packages.append(pkg)
 
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"rpm not available or timed out: {e}")
-        print("Falling back to zypper...")
-        packages = parse_zypper_packages()
+        return sorted(packages, key=lambda p: p["name"].lower())
 
-    return sorted(packages, key=lambda p: p["name"].lower())
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"rpm unavailable ({e}), falling back to zypper...")
+        return parse_zypper_packages()
 
 
 def parse_zypper_packages():
-    """
-    Fallback: parse installed packages using zypper (openSUSE package manager).
-    """
     packages = []
     try:
         result = subprocess.run(
             ["zypper", "--non-interactive", "packages", "--installed-only"],
-            capture_output=True,
-            text=True,
-            timeout=120
+            capture_output=True, text=True, timeout=120
         )
-        lines = result.stdout.strip().split("\n")
-        # Skip header lines (first 4)
-        for line in lines[4:]:
+        for line in result.stdout.strip().split("\n")[4:]:
             parts = [p.strip() for p in line.split("|")]
-            if len(parts) < 5:
-                continue
-            # Format: Status | Repo | Name | Version | Arch
-            name = parts[2]
-            version = parts[3]
-            arch = parts[4] if len(parts) > 4 else None
-            if not name or name == "Name":
+            if len(parts) < 5 or parts[2] in ("Name", ""):
                 continue
             packages.append({
-                "name": name,
-                "version": version,
-                "arch": arch
+                "name": parts[2],
+                "version": parts[3],
+                **({"arch": parts[4]} if parts[4] else {}),
             })
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"zypper not available: {e}")
-
+        print(f"zypper unavailable: {e}")
     return packages
 
 
 def main():
-    output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "result_task_4.json")
+    output_path = os.path.join(SCRIPT_DIR, "result_task_4.json")
 
     print("Reading OS information...")
     os_info = get_os_info()
-    print(f"  OS: {os_info['name']} {os_info['version']} ({os_info['arch']})")
+    print(f"  {os_info['name']} {os_info['version']} ({os_info['arch']})")
 
-    print("Reading installed packages (this may take a moment)...")
+    print("Reading installed packages...")
     packages = parse_rpm_packages()
     print(f"  Found {len(packages)} packages")
 
-    result = {
-        "OS": os_info,
-        "packages": packages
-    }
-
+    result = {"OS": os_info, "packages": packages}
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
     print(f"\n=== Task 4 Summary ===")
     print(f"OS: {os_info['description']}")
-    print(f"Architecture: {os_info['arch']}")
     print(f"Total packages: {len(packages)}")
-    print(f"\nResult saved to: {output_path}")
-
-    # Versioning analysis
-    print(f"\n--- Package versioning examples ---")
+    print(f"Saved: {output_path}")
+    print("\nPackage versioning examples:")
     for pkg in packages[:5]:
         print(f"  {pkg['name']}: {pkg['version']}")
 

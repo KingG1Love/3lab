@@ -10,25 +10,20 @@
 ```
 lab3/
 ├── README.md               
-├── requirements.txt        ← зависимости Python
-├── run_all.sh              ← запуск всех задач
-├── task1/
-│   ├── task1_collect_deps.py     ← сбор зависимостей проекта
-│   └── result_task_1.json        ← РЕЗУЛЬТАТ
-├── task2/
-│   ├── task2_check_vulns.py      ← проверка через GHSA GraphQL API
-│   └── result_task_2.json        ← РЕЗУЛЬТАТ 
-├── task3/
-│   ├── task3_analyze.py          ← анализ уязвимостей, таблица
-│   ├── result_task_3.json        ← РЕЗУЛЬТАТ
-│   └── result_task_3.md          ← РЕЗУЛЬТАТ 
-├── task4/
-│   ├── task4_inventory_os.py     ← инвентаризация ОС (на openSUSE)
-│   └── result_task_4.json        ← РЕЗУЛЬТАТ 
-└── task5/
-    ├── task5_osv_scan.py         ← osv-scanner workflow (на openSUSE)
-    ├── result_task_5.json        ← РЕЗУЛЬТАТ
-    └── result_task_5.md          ← РЕЗУЛЬТАТ
+├── requirements.txt            ← зависимости Python
+├── run_all.sh                  ← запуск всех задач
+├── task1_collect_deps.py       ← Задача 1: сбор зависимостей
+├── result_task_1.json           ← РЕЗУЛЬТАТ
+├── task2_check_vulns.py        ← Задача 2: проверка GHSA API
+│── result_task_2.json           ← РЕЗУЛЬТАТ 
+├── task3_analyze.py            ← Задача 3: таблица анализа
+├── result_task_3.json           ← РЕЗУЛЬТАТ
+├── result_task_3.md              ← РЕЗУЛЬТАТ 
+├── task4_inventory_os.py       ← Задача 4: инвентаризация ОС  (openSUSE)
+├── result_task_4.json           ← РЕЗУЛЬТАТ 
+├── task5_osv_scan.py           ← Задача 5: osv-scanner workflow (openSUSE)
+├── result_task_5.json            ← РЕЗУЛЬТАТ
+└── result_task_5.md              ← РЕЗУЛЬТАТ
 ```
 
 ---
@@ -49,10 +44,10 @@ pip3 install requests packaging
 
 **Запуск:**
 ```bash
-python3 task1/task1_collect_deps.py
+python3 task1_collect_deps.py
 ```
 
-**Результат:** `task1/result_task_1.json`
+**Результат:** `result_task_1.json`
 
 **Итог:** 661 зависимость, экосистема — `maven`.
 
@@ -77,7 +72,7 @@ python3 task1/task1_collect_deps.py
 export GITHUB_TOKEN=ghp_ТОКЕН
 ```
 
-Или откройте `task2/task2_check_vulns.py` и замените строку:
+Или откройте `task2_check_vulns.py` и замените строку:
 ```python
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "TOKEN")
 ```
@@ -89,10 +84,10 @@ GITHUB_TOKEN = "ghp_ТОКЕН"
 **Запуск:**
 ```bash
 export GITHUB_TOKEN=ghp_...
-python3 task2/task2_check_vulns.py
+python3 ask2_check_vulns.py
 ```
 
-**Результат:** `task2/result_task_2.json`
+**Результат:** `result_task_2.json`
 
 **Формат ответа GHSA:**
 - Используется GraphQL `securityVulnerabilities` с фильтром по имени пакета и экосистеме (`MAVEN`)
@@ -100,8 +95,10 @@ python3 task2/task2_check_vulns.py
 - `firstPatchedVersion` — первая версия, вышедшая из уязвимого диапазона
 - `secure_version` — максимальная из `firstPatchedVersion` по всем применимым уязвимостям
 
+**Ускорение:** используется `asyncio + aiohttp` с 20 параллельными воркерами.
+
 **Сложности:**
-- API ограничен rate limit (~5000 запросов/час с токеном), поэтому добавлена задержка 150ms между запросами
+- Rate limit GitHub API (~5000 req/h) → при превышении скрипт ждёт `Retry-After` из заголовка
 - Версии Maven не всегда являются корректным semver (например, `2.6.1.Final`), поэтому используется `packaging.version.Version` с fallback
 
 ---
@@ -110,10 +107,10 @@ python3 task2/task2_check_vulns.py
 
 **Запуск:**
 ```bash
-python3 task3/task3_analyze.py
+python3 task3_analyze.py
 ```
 
-**Результат:** `task3/result_task_3.json`, `task3/result_task_3.md`
+**Результат:** `result_task_3.json`, `result_task_3.md`
 
 Таблица отсортирована по убыванию количества уязвимостей.
 
@@ -135,10 +132,10 @@ python3 task3/task3_analyze.py
 
 **Запуск:**
 ```bash
-python3 task4/task4_inventory_os.py
+python3 task4_inventory_os.py
 ```
 
-**Результат:** `task4/result_task_4.json`
+**Результат:** `result_task_4.json`
 
 **Инструменты:** `rpm -qa --queryformat`, `/etc/os-release`, `platform` (stdlib).  
 **Fallback:** `zypper packages --installed-only` если `rpm` недоступен.
@@ -187,17 +184,17 @@ osv-scanner --version
 
 ```bash
 # Все шаги последовательно (занимает время из-за обновления системы):
-python3 task5/task5_osv_scan.py
+python3 task5_osv_scan.py
 
 # Или по шагам:
-python3 task5/task5_osv_scan.py --step 1   # инвентаризация до обновления
-python3 task5/task5_osv_scan.py --step 2   # osv-scanner до обновления
-python3 task5/task5_osv_scan.py --step 3   # sudo zypper update
-python3 task5/task5_osv_scan.py --step 4   # инвентаризация после + osv-scanner
-python3 task5/task5_osv_scan.py --step 5   # сравнение результатов
+python3 task5_osv_scan.py --step 1   # инвентаризация до обновления
+python3 task5_osv_scan.py --step 2   # osv-scanner до обновления
+python3 task5_osv_scan.py --step 3   # sudo zypper update
+python3 task5_osv_scan.py --step 4   # инвентаризация после + osv-scanner
+python3 task5_osv_scan.py --step 5   # сравнение результатов
 ```
 
-**Результат:** `task5/result_task_5.json`, `task5/result_task_5.md`
+**Результат:** `result_task_5.json`, `result_task_5.md`
 
 **Формат SBOM:** CycloneDX 1.6 JSON с `purl` в формате `pkg:rpm/opensuse.leap/{name}@{version}?arch={arch}&distro=leap-15.5`
 
