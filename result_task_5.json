@@ -1,0 +1,39 @@
+{
+  "before": {
+    "package_count": 2317,
+    "vulnerability_count": 0
+  },
+  "after": {
+    "package_count": 2317,
+    "vulnerability_count": 0
+  },
+  "comparison": {
+    "packages": {
+      "before_count": 2317,
+      "after_count": 2317,
+      "new_packages": [],
+      "removed_packages": [],
+      "updated_packages_count": 2,
+      "updated_packages": [
+        {
+          "name": "flatpak-remote-flathub",
+          "before": "1.14.5-150500.3.3.2",
+          "after": "1.14.5-150500.3.12.1"
+        },
+        {
+          "name": "WebKitGTK-4.1-lang",
+          "before": "2.40.5-150400.4.48.1",
+          "after": "2.46.3-150400.4.97.1"
+        }
+      ]
+    },
+    "vulnerabilities": {
+      "before_count": 0,
+      "after_count": 0,
+      "fixed_count": 0,
+      "fixed_ids": [],
+      "new_count": 0,
+      "new_ids": []
+    }
+  }
+}
